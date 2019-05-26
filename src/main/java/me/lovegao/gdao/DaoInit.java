@@ -1,7 +1,8 @@
-package me.lovegao.gdao.pool;
+package me.lovegao.gdao;
 
-import java.sql.Connection;
 import java.util.Properties;
+
+import me.lovegao.gdao.sqlexecute.ISqlExecutor;
 
 public class DaoInit {
 	private Properties properties;

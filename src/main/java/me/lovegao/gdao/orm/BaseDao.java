@@ -1,8 +1,10 @@
-package me.lovegao.gdao.pool;
+package me.lovegao.gdao.orm;
 
 import java.io.Serializable;
 import java.lang.reflect.ParameterizedType;
 import java.util.List;
+
+import me.lovegao.gdao.sqlexecute.ISqlExecutor;
 
 public class BaseDao<T, PK extends Serializable> {
     private Class<T> entityClass;

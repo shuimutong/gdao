@@ -1,4 +1,4 @@
-package me.lovegao.gdao.pool;
+package me.lovegao.gdao.sqlexecute;
 
 import java.sql.Connection;
 import java.sql.PreparedStatement;
@@ -8,13 +8,39 @@ import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.List;
 
+import me.lovegao.gdao.connection.IConnectionPool;
 import me.lovegao.gdao.util.GDaoCommonUtil;
+import me.lovegao.gdao.util.JDBCUtil;
 
-public class SimpleSqlExecutor implements ISqlExecutor {
+public class SimpleSqlExecutor implements ISqlExecutor, ITransactionSqlExecutor {
+	private static ThreadLocal<Connection> CONNECTION_THREAD_LOCAL = new ThreadLocal();
 	private IConnectionPool connectionPool;
+	/**默认事务隔离级别**/
+	private static int DEFAULT_TRANSACTION_ISOLATION_LEVEL = Connection.TRANSACTION_READ_COMMITTED;
 	
 	public SimpleSqlExecutor(IConnectionPool connectionPool) {
 		this.connectionPool = connectionPool;
+	}
+	
+	//获取连接
+	private Connection getConnection() throws Exception {
+		Connection conn = CONNECTION_THREAD_LOCAL.get();
+		if(conn == null) {
+			conn = connectionPool.getConnection();
+			conn.setTransactionIsolation(DEFAULT_TRANSACTION_ISOLATION_LEVEL);
+			conn.setAutoCommit(true);
+			CONNECTION_THREAD_LOCAL.set(conn);
+		}
+		return conn;
+	}
+	
+	//释放连接
+	private void releaseConnection() {
+		Connection conn = CONNECTION_THREAD_LOCAL.get();
+		if(conn != null) {
+			CONNECTION_THREAD_LOCAL.remove();
+			connectionPool.returnConnection(conn);
+		}
 	}
 	
 	/**
@@ -31,7 +57,7 @@ public class SimpleSqlExecutor implements ISqlExecutor {
 		Connection conn = null;
 		PreparedStatement ps = null;
 		try {
-			conn = connectionPool.getConnection();
+			conn = getConnection();
 			if(returnKeys) {
 				ps = conn.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS);
 			} else {
@@ -46,12 +72,8 @@ public class SimpleSqlExecutor implements ISqlExecutor {
 		} catch (Exception e) {
 			throw e;
 		} finally {
-			if(ps != null) {
-				ps.close();
-			}
-			if(conn != null) {
-				connectionPool.returnConnection(conn);
-			}
+			JDBCUtil.closePreparedStatement(ps);
+			releaseConnection();
 		}
 		return t;
 	}
@@ -73,7 +95,7 @@ public class SimpleSqlExecutor implements ISqlExecutor {
 					}
 					localList.add(rowData);
 				}
-				rs.close();
+				JDBCUtil.closeResultSet(rs);
 				return localList;
 			}
 		});
@@ -92,7 +114,7 @@ public class SimpleSqlExecutor implements ISqlExecutor {
 				if(rs.next()) {
 					id = rs.getLong(1);
 				}
-				rs.close();
+				JDBCUtil.closeResultSet(rs);
 				return id;
 			}
 		});
@@ -104,9 +126,17 @@ public class SimpleSqlExecutor implements ISqlExecutor {
 		int[] res = null;
 		Connection conn = null;
 		PreparedStatement ps = null;
+		//是否改变了自动提交，防止此事务外还有其他事务
+		//如果默认是手动提交，说明外界修改了自动提交，即外界要自己控制提交、回滚操作，则后续的提交、回滚操作不主动触发。
+		//如果默认是自动提交，后续则触发提交、回滚操作
+		boolean changeAutoCommit = false;
 		try {
-			conn = connectionPool.getConnection();
-			conn.setAutoCommit(false);
+			conn = getConnection();
+			//默认是主动提交
+			if(changeAutoCommit = conn.getAutoCommit()) {
+				//改为非自动提交
+				conn.setAutoCommit(false);
+			}
 			ps = conn.prepareStatement(sql);
 			if(!GDaoCommonUtil.checkCollectionEmpty(paramsList)) {
 				for(Object[] params : paramsList) {
@@ -117,16 +147,21 @@ public class SimpleSqlExecutor implements ISqlExecutor {
 				}
 			}
 			res = ps.executeBatch();
-			conn.commit();
+			if(changeAutoCommit) {
+				conn.commit();
+			}
 		} catch (Exception e) {
+			if(changeAutoCommit) {
+				conn.rollback();
+			}
 			throw e;
 		} finally {
 			if(ps != null) {
 				ps.close();
 			}
-			if(conn != null) {
+			if(conn != null && changeAutoCommit) {
 				conn.setAutoCommit(true);
-				connectionPool.returnConnection(conn);
+				releaseConnection();
 			}
 		}
 		return res;
@@ -144,4 +179,27 @@ public class SimpleSqlExecutor implements ISqlExecutor {
 		return tmpRes;
 	}
 
+	public void beginTransaction() throws Exception {
+		beginTransaction(DEFAULT_TRANSACTION_ISOLATION_LEVEL);
+	}
+	
+	public void beginTransaction(int transactionIsolationLevel) throws Exception {
+		Connection conn = getConnection();
+		conn.setAutoCommit(false);
+		conn.setTransactionIsolation(transactionIsolationLevel);
+	}
+	
+	public void commitTransaction() throws Exception {
+		Connection conn = getConnection();
+		conn.commit();
+		conn.setAutoCommit(true);
+		releaseConnection();
+	}
+	
+	public void rollbackTransaction() throws Exception {
+		Connection conn = getConnection();
+		conn.rollback();
+		conn.setAutoCommit(true);
+		releaseConnection();
+	}
 }

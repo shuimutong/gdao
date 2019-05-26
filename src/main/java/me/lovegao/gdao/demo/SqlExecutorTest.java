@@ -6,10 +6,10 @@ import java.util.Properties;
 
 import com.alibaba.fastjson.JSONObject;
 
-import me.lovegao.gdao.pool.IConnectionPool;
-import me.lovegao.gdao.pool.ISqlExecutor;
-import me.lovegao.gdao.pool.SimpleConnectionPool;
-import me.lovegao.gdao.pool.SimpleSqlExecutor;
+import me.lovegao.gdao.connection.IConnectionPool;
+import me.lovegao.gdao.connection.SimpleConnectionPool;
+import me.lovegao.gdao.sqlexecute.ISqlExecutor;
+import me.lovegao.gdao.sqlexecute.SimpleSqlExecutor;
 
 public class SqlExecutorTest {
 

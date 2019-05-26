@@ -1,4 +1,4 @@
-package me.lovegao.gdao.pool;
+package me.lovegao.gdao.connection;
 
 import java.sql.Connection;
 
