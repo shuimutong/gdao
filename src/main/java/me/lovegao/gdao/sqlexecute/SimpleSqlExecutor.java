@@ -12,7 +12,7 @@ import me.lovegao.gdao.connection.IConnectionPool;
 import me.lovegao.gdao.util.GDaoCommonUtil;
 import me.lovegao.gdao.util.JDBCUtil;
 
-public class SimpleSqlExecutor implements ISqlExecutor, ITransactionSqlExecutor {
+public class SimpleSqlExecutor implements ISqlExecutor, IManulTransactionSqlExecutor {
 	private static ThreadLocal<Connection> CONNECTION_THREAD_LOCAL = new ThreadLocal();
 	private IConnectionPool connectionPool;
 	/**默认事务隔离级别**/
@@ -127,8 +127,8 @@ public class SimpleSqlExecutor implements ISqlExecutor, ITransactionSqlExecutor 
 		Connection conn = null;
 		PreparedStatement ps = null;
 		//是否改变了自动提交，防止此事务外还有其他事务
-		//如果默认是手动提交，说明外界修改了自动提交，即外界要自己控制提交、回滚操作，则后续的提交、回滚操作不主动触发。
-		//如果默认是自动提交，后续则触发提交、回滚操作
+		//1、如果默认是手动提交，说明外界修改了自动提交，即外界要自己控制提交、回滚操作，则后续的提交、回滚操作不主动触发。
+		//2、如果默认是自动提交，后续则触发提交、回滚操作
 		boolean changeAutoCommit = false;
 		try {
 			conn = getConnection();
@@ -179,23 +179,27 @@ public class SimpleSqlExecutor implements ISqlExecutor, ITransactionSqlExecutor 
 		return tmpRes;
 	}
 
+	@Override
 	public void beginTransaction() throws Exception {
 		beginTransaction(DEFAULT_TRANSACTION_ISOLATION_LEVEL);
 	}
-	
+
+	@Override
 	public void beginTransaction(int transactionIsolationLevel) throws Exception {
 		Connection conn = getConnection();
 		conn.setAutoCommit(false);
 		conn.setTransactionIsolation(transactionIsolationLevel);
 	}
-	
+
+	@Override
 	public void commitTransaction() throws Exception {
 		Connection conn = getConnection();
 		conn.commit();
 		conn.setAutoCommit(true);
 		releaseConnection();
 	}
-	
+
+	@Override
 	public void rollbackTransaction() throws Exception {
 		Connection conn = getConnection();
 		conn.rollback();

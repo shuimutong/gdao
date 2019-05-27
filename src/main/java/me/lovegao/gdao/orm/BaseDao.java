@@ -4,16 +4,20 @@ import java.io.Serializable;
 import java.lang.reflect.ParameterizedType;
 import java.util.List;
 
+import me.lovegao.gdao.bean.GTableClassParseInfo;
 import me.lovegao.gdao.sqlexecute.ISqlExecutor;
+import me.lovegao.gdao.util.GDaoCommonUtil;
 
 public class BaseDao<T, PK extends Serializable> {
     private Class<T> entityClass;
+    private GTableClassParseInfo entityInfo;
     private ISqlExecutor sqlExecutor;
 	
     @SuppressWarnings("unchecked")
 	protected BaseDao(ISqlExecutor sqlExecutor) {
     		entityClass = (Class<T>) ((ParameterizedType)this.getClass().getGenericSuperclass()).getActualTypeArguments()[0];
     		this.sqlExecutor = sqlExecutor;
+    		entityInfo = GDaoCommonUtil.parseClass(entityClass);
 	}
     
     /**

@@ -1,11 +1,11 @@
 package me.lovegao.gdao.sqlexecute;
 
 /**
- * 包含事务控制的sql执行
+ * 包含主动进行事务控制的sql执行器
  * @author simple
  *
  */
-public interface ITransactionSqlExecutor extends ISqlExecutor {
+public interface IManulTransactionSqlExecutor extends ISqlExecutor {
 	/**
 	 * 开启事务
 	 * @throws Exception
