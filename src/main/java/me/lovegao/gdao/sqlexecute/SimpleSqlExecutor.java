@@ -103,16 +103,16 @@ public class SimpleSqlExecutor implements ISqlExecutor, IManulTransactionSqlExec
 	}
 
 	@Override
-	public long insert(String sql, Object[] params) throws Exception {
-		long pk = -1L;
-		pk = generalSqlExecute(sql, params, true, new IPreparedStatementResolve<Long>() {
+	public <T> T insert(String sql, Object[] params) throws Exception {
+		T pk = null;
+		pk = generalSqlExecute(sql, params, true, new IPreparedStatementResolve<T>() {
 			@Override
-			public Long solvePreparedStatement(PreparedStatement ps) throws Exception {
-				long id = -1L;
+			public T solvePreparedStatement(PreparedStatement ps) throws Exception {
+				T id = null;
 				ps.executeUpdate();
 				ResultSet rs = ps.getGeneratedKeys();
 				if(rs.next()) {
-					id = rs.getLong(1);
+					id = (T) rs.getObject(1);
 				}
 				JDBCUtil.closeResultSet(rs);
 				return id;

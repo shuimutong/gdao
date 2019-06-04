@@ -5,19 +5,21 @@ import java.lang.reflect.ParameterizedType;
 import java.util.List;
 
 import me.lovegao.gdao.bean.GTableClassParseInfo;
+import me.lovegao.gdao.bean.TwoTuple;
 import me.lovegao.gdao.sqlexecute.ISqlExecutor;
 import me.lovegao.gdao.util.GDaoCommonUtil;
+import me.lovegao.gdao.util.GenerateSqlUtil;
 
 public class BaseDao<T, PK extends Serializable> {
     private Class<T> entityClass;
-    private GTableClassParseInfo entityInfo;
+    private GTableClassParseInfo entityClassParseInfo;
     private ISqlExecutor sqlExecutor;
 	
     @SuppressWarnings("unchecked")
 	protected BaseDao(ISqlExecutor sqlExecutor) {
     		entityClass = (Class<T>) ((ParameterizedType)this.getClass().getGenericSuperclass()).getActualTypeArguments()[0];
     		this.sqlExecutor = sqlExecutor;
-    		entityInfo = GDaoCommonUtil.parseClass(entityClass);
+    		entityClassParseInfo = GDaoCommonUtil.parseClass(entityClass);
 	}
     
     /**
@@ -27,7 +29,12 @@ public class BaseDao<T, PK extends Serializable> {
      * @throws Exception
      */
     public PK add(T entity) throws Exception {
-    		return null;
+    		PK id = null;
+    		if(entity != null) {
+    			TwoTuple<String, Object[]> sqlResult = GenerateSqlUtil.addSql(entityClassParseInfo, entity);
+    			id = sqlExecutor.insert(sqlResult.a, sqlResult.b);
+    		}
+    		return id;
     }
     
     /**
@@ -36,7 +43,10 @@ public class BaseDao<T, PK extends Serializable> {
      * @throws Exception
      */
     public void addBatch(List<T> list) throws Exception {
-    		
+    		if(!GDaoCommonUtil.checkCollectionEmpty(list)) {
+    			TwoTuple<String, List<Object[]>> sqlList = GenerateSqlUtil.addBatchSql(entityClassParseInfo, list);
+    			sqlExecutor.insertOrUpdateBatch(sqlList.a, sqlList.b);
+    		}
     }
     
     /**

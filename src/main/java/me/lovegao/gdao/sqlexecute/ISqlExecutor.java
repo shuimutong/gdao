@@ -22,7 +22,7 @@ public interface ISqlExecutor {
 	 * @param params 参数值
 	 * @return 插入数据的id
 	 */
-	long insert(String sql, Object[] params) throws Exception;
+	<T> T insert(String sql, Object[] params) throws Exception;
 	
 	/**
 	 * 批量插入
