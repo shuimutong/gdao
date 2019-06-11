@@ -59,4 +59,34 @@ public class GenerateSqlUtilTest {
 		Assert.assertTrue(res.b.size() == 1 && res.b.get(0).length == 3);
 		
 	}
+	
+	@Test
+	public void deleteByPKSql() throws Exception {
+		GTableClassParseInfo classParseInfo = GDaoCommonUtil.parseClass(TUser.class);
+		TUser user = new TUser();
+		user.setId(1L);
+		user.setAge(18);
+		user.setName("jack");
+		
+		TwoTuple<String, Long> res = GenerateSqlUtil.deleteByPKSql(classParseInfo, user.getId());
+		System.out.println(JSONObject.toJSONString(res));
+		Assert.assertTrue(res.a.length() > 10);
+		Assert.assertTrue(res.b == user.getId());
+	}
+	
+	@Test
+	public void updateSql() throws Exception {
+		GTableClassParseInfo classParseInfo = GDaoCommonUtil.parseClass(TUser.class);
+		TUser user = new TUser();
+		user.setId(1L);
+		user.setAge(18);
+		user.setName("jack");
+		
+		TwoTuple<String, Object[]> res = GenerateSqlUtil.updateSql(classParseInfo, user);
+		System.out.println(JSONObject.toJSONString(res));
+		Assert.assertTrue(res.a.length() > 10);
+		Assert.assertTrue(res.b.length == 3);
+		Assert.assertTrue((Long)res.b[2] == user.getId());
+		
+	}
 }

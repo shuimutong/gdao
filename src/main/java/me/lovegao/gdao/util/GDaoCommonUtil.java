@@ -11,6 +11,18 @@ import me.lovegao.gdao.bean.annotation.GId;
 import me.lovegao.gdao.bean.annotation.GTable;
 
 public class GDaoCommonUtil {
+	public static void checkNullException(Object...objects ) throws NullPointerException {
+		if(checkCollectionEmpty(objects)) {
+			throw new NullPointerException();
+		} else {
+			for(Object obj : objects) {
+				if(obj == null) {
+					throw new NullPointerException();
+				}
+			}
+		}
+		
+	}
 	
 	public static <T> boolean checkCollectionEmpty(T[] objs) {
 		boolean empty = false;

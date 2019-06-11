@@ -62,6 +62,7 @@ public class GenerateSqlUtil {
 	 * @throws Exception
 	 */
 	public static <T> TwoTuple<String, Object[]> addSql(GTableClassParseInfo classParseInfo, T t) throws Exception {
+		GDaoCommonUtil.checkNullException(classParseInfo, t);
 		List<T> tList = new ArrayList();
 		tList.add(t);
 		TwoTuple<String, List<Object[]>> tmpTwoTuple = addBatchSql(classParseInfo, tList);
@@ -78,6 +79,7 @@ public class GenerateSqlUtil {
 	 */
 	public static <T> TwoTuple<String, List<Object[]>> 
 			addBatchSql(GTableClassParseInfo classParseInfo, List<T> tList) throws Exception {
+		GDaoCommonUtil.checkNullException(classParseInfo, tList);
 		StringBuilder sqlSb = new StringBuilder();
 		sqlSb.append("insert into ").append(classParseInfo.getTableName());
 		String[] fieldNames = classParseInfo.getFieldNames();
@@ -124,5 +126,55 @@ public class GenerateSqlUtil {
 		}
 		sqlSb.append("(").append(fieldSb.toString()).append(") value(").append(dotSb.toString()).append(")");
 		return new TwoTuple(sqlSb.toString(), valueList);
+	}
+
+	/**
+	 * 生成通过主键删除记录的sql
+	 * demo:DELETE FROM Person WHERE LastName = 'Wilson' 
+	 * @param classParseInfo
+	 * @param id 主键值
+	 * @return
+	 * @throws Exception
+	 */
+	public static <T, PK> TwoTuple<String, PK> deleteByPKSql(GTableClassParseInfo classParseInfo, PK id) throws Exception {
+		GDaoCommonUtil.checkNullException(classParseInfo, id);
+		StringBuilder sqlSb = new StringBuilder("delete from ");
+		sqlSb.append(classParseInfo.getTableName())
+			.append(" where ").append(classParseInfo.getPkName())
+			.append("=?");
+		return new TwoTuple<String, PK>(sqlSb.toString(), id);
+	}
+	
+	/**
+	 * 生成根据主键更新对象的sql
+	 * @param classParseInfo
+	 * @param t
+	 * @return
+	 * @throws Exception
+	 */
+	public static <T> TwoTuple<String, Object[]> updateSql(GTableClassParseInfo classParseInfo, T t) throws Exception {
+		GDaoCommonUtil.checkNullException(classParseInfo, t);
+		StringBuilder sqlSb = new StringBuilder("update ");
+		sqlSb.append(classParseInfo.getTableName()).append(" set ");
+		//UPDATE Person SET Address = 'Zhongshan 23', City = 'Nanjing'
+		//WHERE LastName = 'Wilson'
+		String[] fieldNames = classParseInfo.getFieldNames();
+		Field[] tableFields = classParseInfo.getTableFields();
+		Object[] tValues = new Object[fieldNames.length + 1];
+		for(int i=0; i<fieldNames.length; i++) {
+			String fieldName = fieldNames[i];
+			sqlSb.append("`").append(fieldName).append("`=?");
+			if(i != fieldNames.length - 1) {
+				sqlSb.append(",");
+			}
+			sqlSb.append(" ");
+			tableFields[i].setAccessible(true);
+			tValues[i] = tableFields[i].get(t);
+		}
+		sqlSb.append(" where ").append(classParseInfo.getPkName()).append("=?");
+		Field pkField = classParseInfo.getPkField();
+		pkField.setAccessible(true);
+		tValues[fieldNames.length] = pkField.get(t);
+		return new TwoTuple<String, Object[]>(sqlSb.toString(), tValues);
 	}
 }

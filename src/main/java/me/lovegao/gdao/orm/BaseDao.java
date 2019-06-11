@@ -55,6 +55,8 @@ public class BaseDao<T, PK extends Serializable> {
      * @throws Exception
      */
     public void deleteByPK(PK id) throws Exception {
+    		TwoTuple<String, PK> sqlIdEntity = GenerateSqlUtil.deleteByPKSql(entityClassParseInfo, id);
+    		sqlExecutor.update(sqlIdEntity.a, new Object[] {sqlIdEntity.b});
     }
     
     /**
@@ -63,7 +65,8 @@ public class BaseDao<T, PK extends Serializable> {
      * @throws Exception
      */
     public void update(T entity) throws Exception {
-    		
+    		TwoTuple<String, Object[]> tuple = GenerateSqlUtil.updateSql(entityClassParseInfo, entity);
+    		sqlExecutor.update(tuple.a, tuple.b);
     }
     
     /**
