@@ -8,10 +8,16 @@ import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.List;
 
+import me.lovegao.gdao.bean.TwoTuple;
 import me.lovegao.gdao.connection.IConnectionPool;
 import me.lovegao.gdao.util.GDaoCommonUtil;
 import me.lovegao.gdao.util.JDBCUtil;
 
+/**
+ * sql执行类
+ * @author simple
+ *
+ */
 public class SimpleSqlExecutor implements ISqlExecutor, IManulTransactionSqlExecutor {
 	private static ThreadLocal<Connection> CONNECTION_THREAD_LOCAL = new ThreadLocal();
 	private IConnectionPool connectionPool;
@@ -77,17 +83,30 @@ public class SimpleSqlExecutor implements ISqlExecutor, IManulTransactionSqlExec
 		}
 		return t;
 	}
-
-	@Override
-	public List<Object[]> query(String sql, Object[] params) throws Exception {
-		List<Object[]> list = new ArrayList();
-		list = generalSqlExecute(sql, params, false, new IPreparedStatementResolve<List<Object[]>>() {
+	
+	/**
+	 * 查询
+	 * @param sql 查询sql
+	 * @param params sql中?对应的值
+	 * @param needColumn 是否需要列名
+	 * @return
+	 * @throws Exception
+	 */
+	private TwoTuple<List<Object[]>, String[]> query(String sql, Object[] params, boolean needColumnName) throws Exception {
+		TwoTuple<List<Object[]>, String[]> tuple = generalSqlExecute(sql, params, false, new IPreparedStatementResolve<TwoTuple<List<Object[]>, String[]>>() {
 			@Override
-			public List<Object[]> solvePreparedStatement(PreparedStatement ps) throws Exception {
+			public TwoTuple<List<Object[]>, String[]> solvePreparedStatement(PreparedStatement ps) throws Exception {
 				List<Object[]> localList = new ArrayList();
+				String[] columns = null;
 				ResultSet rs = ps.executeQuery();
 				ResultSetMetaData metaData = rs.getMetaData();
 				int columnCount = metaData.getColumnCount();
+				if(needColumnName) {
+					columns = new String[columnCount];
+					for(int i=1; i<=columnCount;	 i++) {
+						columns[i-1] = metaData.getColumnName(i);
+					}
+				}
 				while(rs.next()) {
 					Object[] rowData = new Object[columnCount];
 					for(int i=1; i<=columnCount; i++) {
@@ -96,12 +115,29 @@ public class SimpleSqlExecutor implements ISqlExecutor, IManulTransactionSqlExec
 					localList.add(rowData);
 				}
 				JDBCUtil.closeResultSet(rs);
-				return localList;
+				return new TwoTuple<List<Object[]>, String[]>(localList, columns);
 			}
 		});
+		return tuple;
+	}
+
+	@Override
+	public List<Object[]> query(String sql, Object[] params) throws Exception {
+		List<Object[]> list = new ArrayList();
+		TwoTuple<List<Object[]>, String[]> tuple = query(sql, params, false);
+		if(tuple != null) {
+			list = tuple.a;
+		}
 		return list;
 	}
 
+	@Override
+	public TwoTuple<List<Object[]>, String[]> queryValueAndColumn(String sql, Object[] params) throws Exception {
+		TwoTuple<List<Object[]>, String[]> tuple = query(sql, params, true);
+		return tuple;
+	}
+	
+	
 	@Override
 	public <T> T insert(String sql, Object[] params) throws Exception {
 		T pk = null;
@@ -206,4 +242,5 @@ public class SimpleSqlExecutor implements ISqlExecutor, IManulTransactionSqlExec
 		conn.setAutoCommit(true);
 		releaseConnection();
 	}
+
 }

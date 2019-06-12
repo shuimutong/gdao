@@ -2,6 +2,8 @@ package me.lovegao.gdao.sqlexecute;
 
 import java.util.List;
 
+import me.lovegao.gdao.bean.TwoTuple;
+
 /**
  * sql执行接口
  * @author simple
@@ -15,6 +17,15 @@ public interface ISqlExecutor {
 	 * @return 值列表
 	 */
 	List<Object[]> query(String sql, Object[] params) throws Exception;
+	
+	/**
+	 * 查询值，和对应的数据库列名
+	 * @param sql
+	 * @param params
+	 * @return
+	 * @throws Exception
+	 */
+	TwoTuple<List<Object[]>, String[]> queryValueAndColumn(String sql, Object[] params) throws Exception;
 	
 	/**
 	 * 插入数据

@@ -26,8 +26,8 @@ public class GenerateSqlUtil {
 		//insert into user(`id`,`name`) value(?, ?)
 		StringBuilder sqlSb = new StringBuilder();
 		sqlSb.append("insert into ").append(classParseInfo.getTableName());
-		String[] fieldNames = classParseInfo.getFieldNames();
-		Field[] tableFields = classParseInfo.getTableFields();
+		String[] fieldNames = classParseInfo.getTableColumnNames();
+		Field[] tableFields = classParseInfo.getFields();
 		List<Object> valueList = new ArrayList();
 		StringBuilder fieldSb = new StringBuilder();
 		StringBuilder dotSb = new StringBuilder();
@@ -82,8 +82,8 @@ public class GenerateSqlUtil {
 		GDaoCommonUtil.checkNullException(classParseInfo, tList);
 		StringBuilder sqlSb = new StringBuilder();
 		sqlSb.append("insert into ").append(classParseInfo.getTableName());
-		String[] fieldNames = classParseInfo.getFieldNames();
-		Field[] tableFields = classParseInfo.getTableFields();
+		String[] fieldNames = classParseInfo.getTableColumnNames();
+		Field[] tableFields = classParseInfo.getFields();
 		//所有对象的值列表
 		List<Object[]> valueList = new ArrayList();
 		StringBuilder fieldSb = new StringBuilder();
@@ -136,7 +136,7 @@ public class GenerateSqlUtil {
 	 * @return
 	 * @throws Exception
 	 */
-	public static <T, PK> TwoTuple<String, PK> deleteByPKSql(GTableClassParseInfo classParseInfo, PK id) throws Exception {
+	public static <PK> TwoTuple<String, PK> deleteByPKSql(GTableClassParseInfo classParseInfo, PK id) throws Exception {
 		GDaoCommonUtil.checkNullException(classParseInfo, id);
 		StringBuilder sqlSb = new StringBuilder("delete from ");
 		sqlSb.append(classParseInfo.getTableName())
@@ -158,23 +158,44 @@ public class GenerateSqlUtil {
 		sqlSb.append(classParseInfo.getTableName()).append(" set ");
 		//UPDATE Person SET Address = 'Zhongshan 23', City = 'Nanjing'
 		//WHERE LastName = 'Wilson'
-		String[] fieldNames = classParseInfo.getFieldNames();
-		Field[] tableFields = classParseInfo.getTableFields();
-		Object[] tValues = new Object[fieldNames.length + 1];
-		for(int i=0; i<fieldNames.length; i++) {
-			String fieldName = fieldNames[i];
+		String[] tableFieldNames = classParseInfo.getTableColumnNames();
+		Field[] fields = classParseInfo.getFields();
+		Object[] tValues = new Object[tableFieldNames.length + 1];
+		for(int i=0; i<tableFieldNames.length; i++) {
+			String fieldName = tableFieldNames[i];
 			sqlSb.append("`").append(fieldName).append("`=?");
-			if(i != fieldNames.length - 1) {
+			if(i != tableFieldNames.length - 1) {
 				sqlSb.append(",");
 			}
 			sqlSb.append(" ");
-			tableFields[i].setAccessible(true);
-			tValues[i] = tableFields[i].get(t);
+			fields[i].setAccessible(true);
+			tValues[i] = fields[i].get(t);
 		}
 		sqlSb.append(" where ").append(classParseInfo.getPkName()).append("=?");
 		Field pkField = classParseInfo.getPkField();
 		pkField.setAccessible(true);
-		tValues[fieldNames.length] = pkField.get(t);
+		tValues[tableFieldNames.length] = pkField.get(t);
 		return new TwoTuple<String, Object[]>(sqlSb.toString(), tValues);
+	}
+	
+	/**
+	 * 生成根据主键查询的sql
+	 * @param classParseInfo
+	 * @param id
+	 * @return
+	 * @throws Exception
+	 */
+	public static <PK> TwoTuple<String, Object[]> queryByPKSql(GTableClassParseInfo classParseInfo, PK id) throws Exception {
+		GDaoCommonUtil.checkNullException(classParseInfo, id);
+		StringBuilder sqlSb = new StringBuilder("select ");
+		String[] tableFieldNames = classParseInfo.getTableColumnNames();
+		for(int i=0; i<tableFieldNames.length; i++) {
+			sqlSb.append("`").append(tableFieldNames[i]).append("`,");
+		}
+		sqlSb.append("`").append(classParseInfo.getPkName()).append("` from ")
+			.append(classParseInfo.getTableName()).append(" where ")
+			.append(classParseInfo.getPkName()).append("=?");
+		
+		return new TwoTuple<String, Object[]>(sqlSb.toString(), new Object[] {id});
 	}
 }

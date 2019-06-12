@@ -3,7 +3,9 @@ package me.lovegao.gdao.util;
 import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import me.lovegao.gdao.bean.GTableClassParseInfo;
 import me.lovegao.gdao.bean.annotation.GColumn;
@@ -54,6 +56,7 @@ public class GDaoCommonUtil {
 		Field[] fields = clazz.getDeclaredFields();
 		List<Field> fieldList = new ArrayList();
 		List<String> fieldNames = new ArrayList();
+		Map<String, Field> allColumnFieldMap = new HashMap();
 		String pkName = "";
 		Field pkField = null;
 		boolean pkAutoGenerate = false;
@@ -62,6 +65,9 @@ public class GDaoCommonUtil {
 				GColumn column = field.getAnnotation(GColumn.class);
 				//主键声明
 				if(field.isAnnotationPresent(GId.class)) {
+					if(pkField != null) {
+						throw new RuntimeException("=====错误：一个数据库对象做多只能定义一个主键======");
+					}
 					GId pkColumn = field.getAnnotation(GId.class);
 					pkName = column.name();
 					pkField = field;
@@ -70,6 +76,7 @@ public class GDaoCommonUtil {
 					fieldList.add(field);
 					fieldNames.add(column.name());
 				}
+				allColumnFieldMap.put(column.name(), field);
 			}
 		}
 		GTableClassParseInfo tableInfo = new GTableClassParseInfo();
@@ -78,8 +85,9 @@ public class GDaoCommonUtil {
 		tableInfo.setPkName(pkName);
 		tableInfo.setPkField(pkField);
 		tableInfo.setPkAutoGenerate(pkAutoGenerate);
-		tableInfo.setTableFields(fieldList.toArray(new Field[0]));
-		tableInfo.setFieldNames(fieldNames.toArray(new String[0]));
+		tableInfo.setFields(fieldList.toArray(new Field[0]));
+		tableInfo.setTableColumnNames(fieldNames.toArray(new String[0]));
+		tableInfo.setAllColumnFieldMap(allColumnFieldMap);
 		return tableInfo;
 	}
 }

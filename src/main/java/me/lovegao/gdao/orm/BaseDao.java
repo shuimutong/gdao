@@ -8,8 +8,16 @@ import me.lovegao.gdao.bean.GTableClassParseInfo;
 import me.lovegao.gdao.bean.TwoTuple;
 import me.lovegao.gdao.sqlexecute.ISqlExecutor;
 import me.lovegao.gdao.util.GDaoCommonUtil;
+import me.lovegao.gdao.util.GDaoOrmUtil;
 import me.lovegao.gdao.util.GenerateSqlUtil;
 
+/**
+ * 操作对象的dao
+ * @author simple
+ *
+ * @param <T>
+ * @param <PK>
+ */
 public class BaseDao<T, PK extends Serializable> {
     private Class<T> entityClass;
     private GTableClassParseInfo entityClassParseInfo;
@@ -23,7 +31,7 @@ public class BaseDao<T, PK extends Serializable> {
 	}
     
     /**
-     * 添加
+     * 新增
      * @param entity
      * @return
      * @throws Exception
@@ -38,7 +46,7 @@ public class BaseDao<T, PK extends Serializable> {
     }
     
     /**
-     * 批量添加
+     * 批量新增
      * @param list
      * @throws Exception
      */
@@ -50,7 +58,7 @@ public class BaseDao<T, PK extends Serializable> {
     }
     
     /**
-     * 根据主键删除
+     * 根据主键删除数据
      * @param id
      * @throws Exception
      */
@@ -76,39 +84,52 @@ public class BaseDao<T, PK extends Serializable> {
      * @throws Exception
      */
     public T queryByPK(PK id) throws Exception {
+    		TwoTuple<String, Object[]> tuple = GenerateSqlUtil.queryByPKSql(entityClassParseInfo, id);
+    		TwoTuple<List<Object[]>, String[]> resultTuple = sqlExecutor.queryValueAndColumn(tuple.a, tuple.b);
+    		List<T> list = GDaoOrmUtil.convertObject2T(resultTuple.a, resultTuple.b, entityClassParseInfo);
+    		if(!GDaoCommonUtil.checkCollectionEmpty(list)) {
+    			return list.get(0);
+    		}
     		return null;
     }
     
     /**
      * 查询对象列表
-     * @param sql
-     * @param params
+     * @param sql 查询sql
+     * @param replaceValues sql中对应?的值
      * @return 包装类列表
      * @throws Exception
      */
-    public List<T> list(String sql, Object... params) throws Exception {
-    		return null;
+    public List<T> list(String sql, Object... replaceValues) throws Exception {
+    		TwoTuple<List<Object[]>, String[]> resultTuple = sqlExecutor.queryValueAndColumn(sql, replaceValues);
+		List<T> list = GDaoOrmUtil.convertObject2T(resultTuple.a, resultTuple.b, entityClassParseInfo);
+    		return list;
     }
     
     /**
      * 普通查询，结果需要自己转义
-     * @param sql
-     * @param params
+     * @param sql 查询sql
+     * @param replaceValues sql中对应?的值
      * @return List<{列1, 列2}>
      * @throws Exception
      */
-    public List<Object[]> normalList(String sql, Object... params) throws Exception {
-    		return null;
+    public List<Object[]> normalList(String sql, Object... replaceValues) throws Exception {
+    		List<Object[]> list = sqlExecutor.query(sql, replaceValues);
+    		return list;
     }
     
     /**
      * 统计个数
-     * @param sql 包含count()的sql
-     * @param params
+     * @param sql 有且仅有count()的sql
+     * @param replaceValues sql中对应?的值
      * @return
      * @throws Exception
      */
-    public int count(String sql, Object... params) throws Exception {
+    public long count(String sql, Object... replaceValues) throws Exception {
+    		List<Object[]> list = sqlExecutor.query(sql, replaceValues);
+    		if(!GDaoCommonUtil.checkCollectionEmpty(list)) {
+    			return (long) list.get(0)[0];
+    		}
     		return 0;
     }
     
