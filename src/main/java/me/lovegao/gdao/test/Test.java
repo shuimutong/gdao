@@ -1,4 +1,4 @@
-package me.lovegao.gdao.demo;
+package me.lovegao.gdao.test;
 
 import java.lang.ref.WeakReference;
 import java.util.ArrayList;

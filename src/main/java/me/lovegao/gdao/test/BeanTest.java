@@ -1,4 +1,4 @@
-package me.lovegao.gdao.demo;
+package me.lovegao.gdao.test;
 
 import java.beans.PropertyDescriptor;
 import java.lang.reflect.Method;

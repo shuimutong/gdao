@@ -1,4 +1,4 @@
-package me.lovegao.gdao.demo;
+package me.lovegao.gdao.test;
 
 import java.util.ArrayList;
 import java.util.List;

@@ -9,7 +9,7 @@ import org.junit.Test;
 import com.alibaba.fastjson.JSONObject;
 
 import me.lovegao.gdao.bean.GTableClassParseInfo;
-import me.lovegao.gdao.demo.TUser;
+import me.lovegao.gdao.test.TUser;
 
 public class GDaoOrmUtilTest {
 	@Test

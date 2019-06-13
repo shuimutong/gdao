@@ -1,4 +1,4 @@
-package me.lovegao.gdao.demo;
+package me.lovegao.gdao.test;
 
 import me.lovegao.gdao.bean.annotation.GColumn;
 import me.lovegao.gdao.bean.annotation.GId;

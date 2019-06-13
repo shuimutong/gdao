@@ -11,8 +11,8 @@ import com.alibaba.fastjson.JSONObject;
 import me.lovegao.gdao.bean.GTableClassParseInfo;
 import me.lovegao.gdao.bean.SqlValueResult;
 import me.lovegao.gdao.bean.TwoTuple;
-import me.lovegao.gdao.demo.TUser;
-import me.lovegao.gdao.demo.TUser2;
+import me.lovegao.gdao.test.TUser;
+import me.lovegao.gdao.test.TUser2;
 
 public class GenerateSqlUtilTest {
 	@Test
