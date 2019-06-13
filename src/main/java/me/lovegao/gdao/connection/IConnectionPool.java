@@ -18,4 +18,10 @@ public interface IConnectionPool {
 	 * @param conn
 	 */
 	void returnConnection(Connection conn);
+	
+	/**
+	 * 获取查询超时时间
+	 * @return
+	 */
+	int getQueryTimeoutSecond();
 }

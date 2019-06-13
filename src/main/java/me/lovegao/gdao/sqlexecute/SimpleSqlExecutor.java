@@ -23,9 +23,12 @@ public class SimpleSqlExecutor implements ISqlExecutor, IManulTransactionSqlExec
 	private IConnectionPool connectionPool;
 	/**默认事务隔离级别**/
 	private static int DEFAULT_TRANSACTION_ISOLATION_LEVEL = Connection.TRANSACTION_READ_COMMITTED;
+	/**查询超时时间-秒**/
+	private int queryTimeoutSeconds;
 	
 	public SimpleSqlExecutor(IConnectionPool connectionPool) {
 		this.connectionPool = connectionPool;
+		this.queryTimeoutSeconds = connectionPool.getQueryTimeoutSecond();
 	}
 	
 	//获取连接
@@ -69,6 +72,7 @@ public class SimpleSqlExecutor implements ISqlExecutor, IManulTransactionSqlExec
 			} else {
 				ps = conn.prepareStatement(sql);
 			}
+			ps.setQueryTimeout(queryTimeoutSeconds);
 			if(!GDaoCommonUtil.checkCollectionEmpty(params)) {
 				for(int i=0; i<params.length; i++) {
 					ps.setObject(i+1, params[i]);
@@ -174,6 +178,7 @@ public class SimpleSqlExecutor implements ISqlExecutor, IManulTransactionSqlExec
 				conn.setAutoCommit(false);
 			}
 			ps = conn.prepareStatement(sql);
+			ps.setQueryTimeout(queryTimeoutSeconds);
 			if(!GDaoCommonUtil.checkCollectionEmpty(paramsList)) {
 				for(Object[] params : paramsList) {
 					for(int i=0; i<params.length; i++) {

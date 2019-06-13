@@ -27,12 +27,14 @@ public class SimpleConnectionPool implements IConnectionPool {
 	private int POOL_MAX_NUM;
 	/**已创建连接数量**/
 	private AtomicInteger POOL_CREATE_NUM = new AtomicInteger(0);
+	/**查询超时时间-秒**/
+	private int QUERY_TIMEOUT_SECONDS;
 	
 	public SimpleConnectionPool(Properties properties) throws Exception {
 		this.properties = properties;
 		this.POOL_INIT_NUM = Integer.parseInt(properties.getProperty(SystemConstant.STR_INIT_CONNECTION_NUM));
 		this.POOL_MAX_NUM = Integer.parseInt(properties.getProperty(SystemConstant.STR_MAX_CONNECTION_NUM));
-		
+		this.QUERY_TIMEOUT_SECONDS = Integer.parseInt(properties.getProperty(SystemConstant.STR_QUERY_TIME));
 		for(int i=0; i<POOL_INIT_NUM; i++) {
 			POOL_CREATE_NUM.incrementAndGet();
 			Connection conn = ConnectionGetor.createConnection(properties);
@@ -79,6 +81,11 @@ public class SimpleConnectionPool implements IConnectionPool {
 				log.error("returnConnectionException", e);
 			}
 		}
+	}
+
+	@Override
+	public int getQueryTimeoutSecond() {
+		return QUERY_TIMEOUT_SECONDS;
 	}
 
 }
