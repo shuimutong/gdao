@@ -19,7 +19,7 @@ import me.lovegao.gdao.util.JDBCUtil;
  *
  */
 public class SimpleSqlExecutor implements ISqlExecutor, IManulTransactionSqlExecutor {
-	private static ThreadLocal<Connection> CONNECTION_THREAD_LOCAL = new ThreadLocal();
+	private ThreadLocal<Connection> CONNECTION_THREAD_LOCAL = new ThreadLocal();
 	private IConnectionPool connectionPool;
 	/**默认事务隔离级别**/
 	private static int DEFAULT_TRANSACTION_ISOLATION_LEVEL = Connection.TRANSACTION_READ_COMMITTED;
