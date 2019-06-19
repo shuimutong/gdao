@@ -88,24 +88,26 @@ public class GenerateSqlUtil {
 		List<Object[]> valueList = new ArrayList();
 		StringBuilder fieldSb = new StringBuilder();
 		StringBuilder dotSb = new StringBuilder();
-		//非id字段数量
-		int notIdFieldNum = fieldNames.length;
+		//不包含id的字段数量
+		int noIdFieldNum = fieldNames.length;
 		//主键自增
 		boolean pkAutoGenerate = true;
-		//主键非自增
+		//主键非自增，需要主动插入主键
 		if(!classParseInfo.isPkAutoGenerate()) {
 			pkAutoGenerate = false;
 			fieldSb.append("`").append(classParseInfo.getPkName()).append("`,");
 			dotSb.append("?,");
 			classParseInfo.getPkField().setAccessible(true);
 			for(T t : tList) {
-				Object[] tValues = new Object[notIdFieldNum+1];
+				Object[] tValues = new Object[noIdFieldNum+1];
 				tValues[0] = classParseInfo.getPkField().get(t);
 				valueList.add(tValues);
 			}
 		} else {
 			//初始化值列表
-			valueList.add(new Object[notIdFieldNum]);
+			for(int i=0; i<tList.size(); i++) {
+				valueList.add(new Object[noIdFieldNum]);
+			}
 		}
 		for(int i=0; i<fieldNames.length; i++) {
 			fieldSb.append("`").append(fieldNames[i]).append("`");
@@ -116,6 +118,7 @@ public class GenerateSqlUtil {
 			}
 			tableFields[i].setAccessible(true);
 			int tValueIndex = i;
+			//主键非自增
 			if(!pkAutoGenerate) {
 				tValueIndex += 1;
 			}

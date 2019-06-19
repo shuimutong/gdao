@@ -1,7 +1,10 @@
 package me.lovegao.gdao.instancemanager;
 
+import java.sql.Connection;
 import java.util.Properties;
 
+import me.lovegao.gdao.connection.ConnectionGetor;
+import me.lovegao.gdao.connection.IConnectionGetor;
 import me.lovegao.gdao.connection.IConnectionPool;
 import me.lovegao.gdao.connection.SimpleConnectionPool;
 import me.lovegao.gdao.sqlexecute.IManulTransactionSqlExecutor;
@@ -41,5 +44,4 @@ public class DaoResourceManager {
 	public IConnectionPool getConnectionPool() {
 		return connectionPool;
 	}
-	
 }
