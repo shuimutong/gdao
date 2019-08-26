@@ -5,6 +5,9 @@ import java.lang.reflect.Method;
 
 import com.alibaba.fastjson.JSONObject;
 
+import me.lovegao.gdao.connection.IConnectionPool;
+import me.lovegao.gdao.connection.SimpleV2ConnectionPool;
+
 public class BeanTest {
 
 	public static void main(String[] args) throws Exception {
@@ -18,6 +21,10 @@ public class BeanTest {
 		System.out.println(name);
 		
 		JSONObject.parseObject("t", Person.class);
+	}
+	
+	public static void extendTest() throws Exception {
+		IConnectionPool pool = new SimpleV2ConnectionPool(null);
 	}
 
 }

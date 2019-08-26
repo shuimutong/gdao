@@ -3,6 +3,7 @@ package me.lovegao.gdao.util;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.sql.Statement;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -25,6 +26,16 @@ public class JDBCUtil {
 				ps.close();
 			} catch (SQLException e) {
 				log.error("closePreparedStatementException", e);
+			}
+		}
+	}
+	
+	public static void closeStatement(Statement st) {
+		if(st != null) {
+			try {
+				st.close();
+			} catch (SQLException e) {
+				log.error("closeStatementException", e);
 			}
 		}
 	}
