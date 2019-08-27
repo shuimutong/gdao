@@ -88,4 +88,7 @@ public class SimpleConnectionPool implements IConnectionPool {
 		return QUERY_TIMEOUT_SECONDS;
 	}
 
+	Connection getByConnectionHashCode(int hashCode) {
+		return CONNECTION_MAP_POOL.get(hashCode);
+	}
 }
