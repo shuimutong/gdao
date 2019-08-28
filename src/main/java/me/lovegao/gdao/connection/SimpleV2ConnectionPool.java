@@ -191,44 +191,58 @@ public class SimpleV2ConnectionPool extends SimpleConnectionPool {
 					log.error("ConnectionLeakCheckSleepException", e);
 				}
 				try {
-					if(CONNECTION_OUT_TIME_MAP_POOL.size() > 0) {
-						Iterator<Entry<Integer, Long>> connHashCodeIt = CONNECTION_OUT_TIME_MAP_POOL.entrySet().iterator();
-						if(preConnHashCodeSet.size() == 0) {
-							while(connHashCodeIt.hasNext()) {
-								preConnHashCodeSet.add(connHashCodeIt.next().getKey());
-							}
-						} else {
-							StringBuilder logSb = new StringBuilder();
-							long timeFlag = (long) (System.currentTimeMillis() - forceReturnConnectionTimeHour * 3600 * 1000);
-							logSb.append("ConnectionLeakCheck---")
-								.append(",timeFlag:").append(timeFlag)
-								.append(",forceReturnConnectionTimeHour:").append(forceReturnConnectionTimeHour);
-							List<Integer> toCloseConnectionHashCodeList = new ArrayList();
-							logSb.append(",toCloseConn,{");
-							while(connHashCodeIt.hasNext()) {
-								Entry<Integer, Long> connEntry = connHashCodeIt.next();
-								int connHashCode = connEntry.getKey();
-								if(preConnHashCodeSet.contains(connHashCode) && connEntry.getValue() < timeFlag) {
-									toCloseConnectionHashCodeList.add(connHashCode);
-									logSb.append(connHashCode).append(":").append(timeFlag).append(",");
-								}
-							}
-							logSb.append("}");
-							if(toCloseConnectionHashCodeList.size() > 0) {
-								for(Integer connHashCode : toCloseConnectionHashCodeList) {
-									Connection conn = superGetByConnectionHashCode(connHashCode);
-									if(conn != null) {
-										conn.close();
-										returnConnection(conn);
-									}
-								}
-							}
-							log.info(logSb.toString());
-						}
-					}
+					checkConnectionLeak(preConnHashCodeSet);
 				} catch (Exception e) {
 					log.error("ConnectionLeakCheckException", e);
 				}
+			}
+		}
+	}
+	
+	//检测连接泄露
+	private void checkConnectionLeak(Set<Integer> preConnHashCodeSet) throws Exception {
+		if(CONNECTION_OUT_TIME_MAP_POOL.size() < 1) {
+			preConnHashCodeSet = new HashSet();
+		} else {
+			Iterator<Entry<Integer, Long>> connHashCodeIt = CONNECTION_OUT_TIME_MAP_POOL.entrySet().iterator();
+			//先对比前后两次的连接，如果有相同的，再检测相同的连接
+			if(preConnHashCodeSet.size() == 0) {
+				while(connHashCodeIt.hasNext()) {
+					preConnHashCodeSet.add(connHashCodeIt.next().getKey());
+				}
+			} else {
+				StringBuilder logSb = new StringBuilder();
+				long timeFlag = (long) (System.currentTimeMillis() - forceReturnConnectionTimeHour * 3600 * 1000);
+				logSb.append("ConnectionLeakCheck---")
+					.append(",timeFlag:").append(timeFlag)
+					.append(",forceReturnConnectionTimeHour:").append(forceReturnConnectionTimeHour);
+				List<Integer> toCloseConnectionHashCodeList = new ArrayList();
+				logSb.append(",toCloseConn,{");
+				while(connHashCodeIt.hasNext()) {
+					Entry<Integer, Long> connEntry = connHashCodeIt.next();
+					int connHashCode = connEntry.getKey();
+					if(preConnHashCodeSet.contains(connHashCode) && connEntry.getValue() < timeFlag) {
+						toCloseConnectionHashCodeList.add(connHashCode);
+						logSb.append(connHashCode).append(":").append(timeFlag).append(",");
+					}
+				}
+				logSb.append("}");
+				if(toCloseConnectionHashCodeList.size() > 0) {
+					for(Integer connHashCode : toCloseConnectionHashCodeList) {
+						Connection conn = superGetByConnectionHashCode(connHashCode);
+						if(conn != null) {
+							try {
+								conn.close();
+							} catch (SQLException e) {
+								log.error("closeConnectionException", e);
+							}
+							superReturnConnection(conn);
+						}
+					}
+				}
+				log.info(logSb.toString());
+				//进行过一次检测之后，对之前存储的进行初始化
+				preConnHashCodeSet = new HashSet();
 			}
 		}
 	}
@@ -243,7 +257,13 @@ public class SimpleV2ConnectionPool extends SimpleConnectionPool {
 		public void run() {
 			while (true) {
 				Connection toCheckConn = TO_CHECK_CONNECTION_POOL.poll();
-				if (toCheckConn != null) {
+				if (toCheckConn == null) {
+					try {
+						wait();
+					} catch (InterruptedException e) {
+						log.error("checkReturnConnectionWaitException", e);
+					}
+				} else {
 					boolean canUse = ConnectionUtil.isValidConnection(toCheckConn, checkConnectionValidationQuery,
 							QUERY_TIMEOUT_SECONDS);
 					if (!canUse) {
@@ -253,13 +273,7 @@ public class SimpleV2ConnectionPool extends SimpleConnectionPool {
 							log.error("checkReturnConnectionCloseConnException", e);
 						}
 					}
-					returnConnection(toCheckConn);
-				} else {
-					try {
-						wait();
-					} catch (InterruptedException e) {
-						log.error("checkReturnConnectionWaitException", e);
-					}
+					superReturnConnection(toCheckConn);
 				}
 			}
 		}
