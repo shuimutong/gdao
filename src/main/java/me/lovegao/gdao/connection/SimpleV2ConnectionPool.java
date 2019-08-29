@@ -351,18 +351,21 @@ public class SimpleV2ConnectionPool extends SimpleConnectionPool {
 								toCheckConn.close();
 								//连接不可用，继续检测其他连接是否正常
 								continueCheck = true;
+								log.info("oneConnectionCannotUse,closeIt.....");
 							}
 						}
 					} catch (Exception e) {
-						log.error("checkReturnConnectionWaitException", e);
+						log.error("checkReturnConnectionException", e);
+						continueCheck = true;
 					} finally {
 						if (toCheckConn != null) {
 							superReturnConnection(toCheckConn);
 						}
 					}
 					if(continueCheck) {
+						log.info("checkOneConnectionCannotUse,beginToCheckOtherConnection....");
 						try {
-							Thread.sleep(1000);
+							Thread.sleep(500);
 						} catch (InterruptedException e) {
 							log.error("checkReturnConnectionWaitException", e);
 						}
