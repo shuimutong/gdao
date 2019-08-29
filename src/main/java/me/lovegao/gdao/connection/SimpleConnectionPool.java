@@ -1,7 +1,10 @@
 package me.lovegao.gdao.connection;
 
 import java.sql.Connection;
+import java.sql.SQLException;
+import java.util.Iterator;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Properties;
 import java.util.Queue;
 import java.util.concurrent.ConcurrentHashMap;
@@ -90,5 +93,17 @@ public class SimpleConnectionPool implements IConnectionPool {
 
 	Connection getByConnectionHashCode(int hashCode) {
 		return CONNECTION_MAP_POOL.get(hashCode);
+	}
+
+	@Override
+	public void closeConnectionPool() {
+		Iterator<Entry<Integer, Connection>> entryIt = CONNECTION_MAP_POOL.entrySet().iterator();
+		while(entryIt.hasNext()) {
+			try {
+				entryIt.next().getValue().close();
+			} catch (SQLException e) {
+				log.error("closeConnectionException", e);
+			};
+		}
 	}
 }

@@ -12,6 +12,7 @@ import java.util.Properties;
 import java.util.Queue;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -40,7 +41,7 @@ public class SimpleV2ConnectionPool extends SimpleConnectionPool {
 	// 定时检测连接的时间（分钟）
 	private int periodCheckConnectionTimeMin;
 	/** 待检测连接 **/
-	private Queue<Connection> TO_CHECK_CONNECTION_POOL;
+	private volatile Queue<Connection> TO_CHECK_CONNECTION_POOL;
 	//查询超时时间
 	private final int QUERY_TIMEOUT_SECONDS;
 	//连接泄露检测
@@ -52,11 +53,16 @@ public class SimpleV2ConnectionPool extends SimpleConnectionPool {
 	//连接最大空闲时长（小时）
 //	private double connectionMaxIdleTimeHour;
 	/**连接最后借出时间**/
-	private final Map<Integer, Long> CONNECTION_OUT_TIME_MAP_POOL = new ConcurrentHashMap();
+	private Map<Integer, Long> CONNECTION_OUT_TIME_MAP_POOL = null;
 
 	public SimpleV2ConnectionPool(Properties properties) throws Exception {
 		super(properties);
 		QUERY_TIMEOUT_SECONDS = super.getQueryTimeoutSecond();
+		initProp(properties);
+		initCheck();
+	}
+	
+	private void initProp(Properties properties) {
 		//连接有效性检测配置
 		if (properties.containsKey(SystemConstant.STR_CHECK_CONNECTION_VALIDATION_QUERY)) {
 			checkConnectionValidationQuery = properties
@@ -88,10 +94,7 @@ public class SimpleV2ConnectionPool extends SimpleConnectionPool {
 					}
 				}
 				//最大空闲检测，功能上和定时检测连接重复，暂时不开发。
-//				String connectionMaxIdleTimeStr = properties.getProperty(SystemConstant.STR_CONNECTION_MAX_IDLE_TIME_HOUR);
-//				if (NumberUtils.isNumber(connectionMaxIdleTimeStr)) {
-//					connectionMaxIdleTimeHour = Double.parseDouble(connectionMaxIdleTimeStr);
-//				}
+				
 				//需要同时配置（强制归还时间）才能检测连接泄露
 				if(forceReturnConnectionTimeHour > 0) {
 					checkConnectionLeak = true;
@@ -107,7 +110,6 @@ public class SimpleV2ConnectionPool extends SimpleConnectionPool {
 			.append(",checkConnectionLeakPeriodTimeMin:").append(checkConnectionLeakPeriodTimeMin)
 			.append(",forceReturnConnectionTimeHour:").append(forceReturnConnectionTimeHour);
 		System.out.println(infoSb.toString());
-		initCheck();
 	}
 
 	@Override
@@ -122,15 +124,42 @@ public class SimpleV2ConnectionPool extends SimpleConnectionPool {
 
 	@Override
 	public void returnConnection(Connection conn) {
+		//检测连接泄露
 		if(checkConnectionLeak) {
-			CONNECTION_OUT_TIME_MAP_POOL.remove(conn.hashCode());
+			int connHashCode = conn.hashCode();
+			//连接超时过长，已经被主动移除
+			if(!CONNECTION_OUT_TIME_MAP_POOL.containsKey(connHashCode)) {
+				return;
+			} else {
+				CONNECTION_OUT_TIME_MAP_POOL.remove(connHashCode);
+			}
 		}
+		//检测归还连接
 		if (checkConnectionWhenReturn) {
-			TO_CHECK_CONNECTION_POOL.add(conn);
-			notifyAll();
+			if(TO_CHECK_CONNECTION_POOL.isEmpty()) {
+				synchronized(TO_CHECK_CONNECTION_POOL) {
+					if(TO_CHECK_CONNECTION_POOL.isEmpty()) {
+						TO_CHECK_CONNECTION_POOL.add(conn);
+						TO_CHECK_CONNECTION_POOL.notifyAll();
+					} else {
+						TO_CHECK_CONNECTION_POOL.add(conn);
+					}
+				}
+			} else {
+				TO_CHECK_CONNECTION_POOL.add(conn);
+			}
 		} else {
 			superReturnConnection(conn);
 		}
+	}
+	
+
+	@Override
+	public void closeConnectionPool() {
+		if(ES != null) {
+			ES.shutdownNow();
+		}
+		super.closeConnectionPool();
 	}
 
 	private void superReturnConnection(Connection conn) {
@@ -146,6 +175,7 @@ public class SimpleV2ConnectionPool extends SimpleConnectionPool {
 		int threadPoolSize = 0;
 		if(checkConnectionWhenReturn) {
 			threadPoolSize += 2;
+			TO_CHECK_CONNECTION_POOL = new ConcurrentLinkedQueue();
 		}
 		if(periodCheckConnectionTimeMin > 0) {
 			threadPoolSize++;
@@ -153,6 +183,7 @@ public class SimpleV2ConnectionPool extends SimpleConnectionPool {
 		//需要同时配置（强制归还时间、最大空闲时间）才能检测连接泄露
 		if(checkConnectionLeak) {
 			threadPoolSize++;
+			CONNECTION_OUT_TIME_MAP_POOL = new ConcurrentHashMap();
 		}
 		if(threadPoolSize > 0) {
 			ES = Executors.newFixedThreadPool(threadPoolSize);
@@ -185,6 +216,9 @@ public class SimpleV2ConnectionPool extends SimpleConnectionPool {
 		public void run() {
 			Set<Integer> preConnHashCodeSet = new HashSet();
 			while (true) {
+				if(ES.isShutdown()) {
+					break;
+				}
 				try {
 					Thread.sleep(sleepTimeMs);
 				} catch (Exception e) {
@@ -218,12 +252,13 @@ public class SimpleV2ConnectionPool extends SimpleConnectionPool {
 					.append(",forceReturnConnectionTimeHour:").append(forceReturnConnectionTimeHour);
 				List<Integer> toCloseConnectionHashCodeList = new ArrayList();
 				logSb.append(",toCloseConn,{");
+				//过滤出两次集合重合，且已经超时的元素
 				while(connHashCodeIt.hasNext()) {
 					Entry<Integer, Long> connEntry = connHashCodeIt.next();
 					int connHashCode = connEntry.getKey();
 					if(preConnHashCodeSet.contains(connHashCode) && connEntry.getValue() < timeFlag) {
 						toCloseConnectionHashCodeList.add(connHashCode);
-						logSb.append(connHashCode).append(":").append(timeFlag).append(",");
+						logSb.append(connHashCode).append(":").append(connEntry.getValue()).append(",");
 					}
 				}
 				logSb.append("}");
@@ -236,6 +271,7 @@ public class SimpleV2ConnectionPool extends SimpleConnectionPool {
 							} catch (SQLException e) {
 								log.error("closeConnectionException", e);
 							}
+							CONNECTION_OUT_TIME_MAP_POOL.remove(connHashCode);
 							superReturnConnection(conn);
 						}
 					}
@@ -256,10 +292,15 @@ public class SimpleV2ConnectionPool extends SimpleConnectionPool {
 		@Override
 		public void run() {
 			while (true) {
+				if(ES.isShutdown()) {
+					break;
+				}
 				Connection toCheckConn = TO_CHECK_CONNECTION_POOL.poll();
 				if (toCheckConn == null) {
 					try {
-						wait();
+						synchronized(TO_CHECK_CONNECTION_POOL) {
+							TO_CHECK_CONNECTION_POOL.wait();
+						}
 					} catch (InterruptedException e) {
 						log.error("checkReturnConnectionWaitException", e);
 					}
@@ -289,26 +330,44 @@ public class SimpleV2ConnectionPool extends SimpleConnectionPool {
 		@Override
 		public void run() {
 			while (true) {
+				if(ES.isShutdown()) {
+					break;
+				}
 				try {
 					Thread.sleep(sleepTimeMs);
 				} catch (Exception e) {
 					log.error("checkReturnConnectionSleepException", e);
 				}
-				Connection toCheckConn = null;
-				try {
-					toCheckConn = getConnection();
-					if (toCheckConn != null) {
-						boolean canUse = ConnectionUtil.isValidConnection(toCheckConn,
-								checkConnectionValidationQuery, QUERY_TIMEOUT_SECONDS);
-						if (!canUse) {
-							toCheckConn.close();
+				while(true) {
+					//是否继续检测
+					boolean continueCheck = false;
+					Connection toCheckConn = null;
+					try {
+						toCheckConn = getConnection();
+						if (toCheckConn != null) {
+							boolean canUse = ConnectionUtil.isValidConnection(toCheckConn,
+									checkConnectionValidationQuery, QUERY_TIMEOUT_SECONDS);
+							if (!canUse) {
+								toCheckConn.close();
+								//连接不可用，继续检测其他连接是否正常
+								continueCheck = true;
+							}
+						}
+					} catch (Exception e) {
+						log.error("checkReturnConnectionWaitException", e);
+					} finally {
+						if (toCheckConn != null) {
+							superReturnConnection(toCheckConn);
 						}
 					}
-				} catch (Exception e) {
-					log.error("checkReturnConnectionWaitException", e);
-				} finally {
-					if (toCheckConn != null) {
-						superReturnConnection(toCheckConn);
+					if(continueCheck) {
+						try {
+							Thread.sleep(1000);
+						} catch (InterruptedException e) {
+							log.error("checkReturnConnectionWaitException", e);
+						}
+					} else {
+						break;
 					}
 				}
 			}

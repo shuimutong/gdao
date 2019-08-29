@@ -24,4 +24,9 @@ public interface IConnectionPool {
 	 * @return
 	 */
 	int getQueryTimeoutSecond();
+	
+	/**
+	 * 关闭连接池
+	 */
+	void closeConnectionPool();
 }
