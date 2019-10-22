@@ -133,4 +133,11 @@ public class BaseDao<T, PK extends Serializable> {
     		return 0;
     }
     
+    /**
+     * 获取sql执行
+     * @return
+     */
+    public ISqlExecutor getSqlExecutor() {
+    	return sqlExecutor;
+    }
 }
