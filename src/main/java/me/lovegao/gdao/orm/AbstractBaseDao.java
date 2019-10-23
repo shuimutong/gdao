@@ -18,17 +18,19 @@ import me.lovegao.gdao.util.GenerateSqlUtil;
  * @param <T>
  * @param <PK>
  */
-public class BaseDao<T, PK extends Serializable> {
+public abstract class AbstractBaseDao<T, PK extends Serializable> {
     private Class<T> entityClass;
     private GTableClassParseInfo entityClassParseInfo;
     private ISqlExecutor sqlExecutor;
 	
     @SuppressWarnings("unchecked")
-	protected BaseDao(ISqlExecutor sqlExecutor) {
+	protected AbstractBaseDao() {
     		entityClass = (Class<T>) ((ParameterizedType)this.getClass().getGenericSuperclass()).getActualTypeArguments()[0];
-    		this.sqlExecutor = sqlExecutor;
+    		this.sqlExecutor = getSqlExecutor();
     		entityClassParseInfo = GDaoCommonUtil.parseClass(entityClass);
 	}
+    
+    public abstract ISqlExecutor getSqlExecutor();
     
     /**
      * 新增
@@ -133,11 +135,4 @@ public class BaseDao<T, PK extends Serializable> {
     		return 0;
     }
     
-    /**
-     * 获取sql执行
-     * @return
-     */
-    public ISqlExecutor getSqlExecutor() {
-    	return sqlExecutor;
-    }
 }
