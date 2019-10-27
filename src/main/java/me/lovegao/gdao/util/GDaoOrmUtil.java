@@ -2,6 +2,7 @@ package me.lovegao.gdao.util;
 
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
+import java.math.BigInteger;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -41,7 +42,14 @@ public class GDaoOrmUtil {
 				if(!setAccessible) {
 					field.setAccessible(true);
 				}
-				field.set(t, objs[i]);
+				Object tmpObj = objs[i];
+				if(tmpObj != null 
+						&& (field.getType() == Long.class || field.getType() == long.class) 
+						&& tmpObj instanceof BigInteger) {
+					field.set(t, ((BigInteger)tmpObj).longValue());
+				} else {
+					field.set(t, objs[i]);
+				}
 			}
 			setAccessible = true;
 			list.add(t);

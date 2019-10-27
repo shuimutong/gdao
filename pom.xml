@@ -13,6 +13,7 @@
 	<properties>
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 		<junit.version>4.12</junit.version>
+		<mysql.version>5.1.47</mysql.version>
 	</properties>
 
 	<dependencies>
@@ -40,7 +41,7 @@
 		<dependency>
 			<groupId>mysql</groupId>
 			<artifactId>mysql-connector-java</artifactId>
-			<version>5.1.31</version>
+			<version>${mysql.version}</version>
 		</dependency>
 	</dependencies>
 	<build>

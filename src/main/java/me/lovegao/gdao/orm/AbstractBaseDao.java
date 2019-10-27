@@ -103,7 +103,7 @@ public abstract class AbstractBaseDao<T, PK extends Serializable> {
      * @throws Exception
      */
     public List<T> list(String sql, Object... replaceValues) throws Exception {
-    		TwoTuple<List<Object[]>, String[]> resultTuple = sqlExecutor.queryValueAndColumn(sql, replaceValues);
+    	TwoTuple<List<Object[]>, String[]> resultTuple = sqlExecutor.queryValueAndColumn(sql, replaceValues);
 		List<T> list = GDaoOrmUtil.convertObject2T(resultTuple.a, resultTuple.b, entityClassParseInfo);
     		return list;
     }
